@@ -1,77 +1,141 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<!--DPIScalingFix-->
-		<!--<ApplicationHighDpiMode>DpiUnawareGdiScaled</ApplicationHighDpiMode>-->
-		<!--There are problems with text resolution in my PC-->
-		
-		<!--Main-->
-		<OutputType>WinExe</OutputType>
-		<Nullable>enable</Nullable>
+		<!-- Target Framework -->
+		<TargetFramework>net9.0-windows</TargetFramework>
 		<UseWindowsForms>true</UseWindowsForms>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
-		<ApplicationIcon>App.ico</ApplicationIcon>
-		<AssemblyVersion>1.0.0</AssemblyVersion>
-		<FileVersion>$(AssemblyVersion)</FileVersion>
-		<Version>$(AssemblyVersion)</Version>
-		<Authors>exalaolir</Authors>
-		<Company>$(Authors)</Company>
-		<Copyright>$(Authors) © $([System.DateTime]::UtcNow.Year)</Copyright>
-		<PackageProjectUrl>https://github.com/exalaolir/SimpleBin</PackageProjectUrl>
-		<Description>This is a small program that adds a system recycle bin shortcut to the tray.</Description>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<OutputType>WinExe</OutputType>
+		<StartupObject>SimpleBin.Program</StartupObject>
 
+		<!-- Application Properties -->
+		<AssemblyTitle>SimpleBin - Optimized</AssemblyTitle>
+		<AssemblyDescription>Optimized Recycle Bin Tray Application</AssemblyDescription>
+		<AssemblyCompany>SimpleBin</AssemblyCompany>
+		<AssemblyProduct>SimpleBin</AssemblyProduct>
+		<Copyright>Copyright © 2025</Copyright>
+		<AssemblyVersion>2.0.0.0</AssemblyVersion>
+		<FileVersion>2.0.0.0</FileVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<AotAssemblies>true</AotAssemblies>
+		<Nullable>enable</Nullable>
+
+		<!-- Performance Optimizations -->
+		<Optimize>true</Optimize>
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+		<!-- Trimming is not supported for Windows Forms - removed -->
+		<!-- <TrimMode>partial</TrimMode> -->
+		<!-- <PublishTrimmed>true</PublishTrimmed> -->
+		<PublishSingleFile>true</PublishSingleFile>
+		<PublishReadyToRun>true</PublishReadyToRun>
+		<SelfContained>false</SelfContained>
+
+		<!-- Memory Optimizations -->
+		<ServerGarbageCollection>false</ServerGarbageCollection>
+		<ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+		<RetainVMGarbageCollection>false</RetainVMGarbageCollection>
+
+		<!-- Size Optimizations -->
+		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+		<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+		<UseAppHost>true</UseAppHost>
+
+		<!-- AOT Compilation (Optional - uncomment for maximum performance) -->
+		<!-- <PublishAot>true</PublishAot> -->
+		<!-- <OptimizationPreference>Size</OptimizationPreference> -->
+
+		<!-- Remove unused references - Windows Forms compatible -->
+		<!-- <TrimUnusedDependencies>true</TrimUnusedDependencies> -->
+
+		<!-- Application Icon -->
+		<ApplicationIcon>Resources\app.ico</ApplicationIcon>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+
+		<!-- Suppress warnings for single-file publishing -->
+		<!-- <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings> -->
+		<NoWarn>$(NoWarn);NETSDK1175</NoWarn>
 	</PropertyGroup>
 
+	<!-- Release Configuration Optimizations -->
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<Optimize>true</Optimize>
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+		<DefineConstants>RELEASE</DefineConstants>
+		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+		<PlatformTarget>AnyCPU</PlatformTarget>
+		<Prefer32Bit>false</Prefer32Bit>
+	</PropertyGroup>
+
+	<!-- Debug Configuration -->
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<Optimize>false</Optimize>
+		<DebugType>full</DebugType>
+		<DebugSymbols>true</DebugSymbols>
+		<DefineConstants>DEBUG;TRACE</DefineConstants>
+	</PropertyGroup>
+
+	<!-- Platform Specific Optimizations -->
+	<PropertyGroup Condition="'$(Platform)'=='x64'">
+		<PlatformTarget>x64</PlatformTarget>
+		<Prefer32Bit>false</Prefer32Bit>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Platform)'=='x86'">
+		<PlatformTarget>x86</PlatformTarget>
+		<Prefer32Bit>true</Prefer32Bit>
+	</PropertyGroup>
+
+	<!-- Embedded Resources -->
+
+	<!-- Application Icon -->
 	<ItemGroup>
-	  <None Remove="config.json" />
+		<Content Include="Resources\app.ico" />
+		<EmbeddedResource Include="Resources\empty.ico">
+		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Resources\empty_dark.ico">
+		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Resources\full.ico">
+		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Resources\full_dark.ico">
+		  <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		</EmbeddedResource>
 	</ItemGroup>
 
+	<!-- Windows Forms Compatible - No Trimming -->
+	<!-- <ItemGroup>
+    <TrimmerRootAssembly Include="System.Windows.Forms" />
+    <TrimmerRootAssembly Include="System.Drawing" />
+  </ItemGroup> -->
+
+	<!-- Runtime Configuration -->
 	<ItemGroup>
-	  <Content Include="App.ico" />
+		<RuntimeHostConfigurationOption Include="System.GC.Server" Value="false" />
+		<RuntimeHostConfigurationOption Include="System.GC.Concurrent" Value="true" />
+		<RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
+		<RuntimeHostConfigurationOption Include="System.Threading.ThreadPool.MinThreads" Value="4" />
+		<RuntimeHostConfigurationOption Include="System.Threading.ThreadPool.MaxThreads" Value="25" />
 	</ItemGroup>
 
+	<!-- Publish Profiles -->
 	<ItemGroup>
-	  <PackageReference Include="Roslynator.Analyzers" Version="4.13.1">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
-	  <PackageReference Include="Roslynator.CodeFixes" Version="4.13.1">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
-	  <PackageReference Include="Roslynator.Formatting.Analyzers" Version="4.13.1">
-	    <PrivateAssets>all</PrivateAssets>
-	    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-	  </PackageReference>
-	  <PackageReference Include="Velopack" Version="0.0.1298" />
+		<None Include="Properties\PublishProfiles\**" />
+	</ItemGroup>
+	<ItemGroup>
+	  <None Remove="Resources\empty.ico" />
+	  <None Remove="Resources\empty_dark.ico" />
+	  <None Remove="Resources\full.ico" />
+	  <None Remove="Resources\full_dark.ico" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Compile Update="Resources\LightIcons.Designer.cs">
-	    <DesignTime>True</DesignTime>
-	    <AutoGen>True</AutoGen>
-	    <DependentUpon>LightIcons.resx</DependentUpon>
-	  </Compile>
-	  <Compile Update="Resources\DarkIcons.Designer.cs">
-	    <DesignTime>True</DesignTime>
-	    <AutoGen>True</AutoGen>
-	    <DependentUpon>DarkIcons.resx</DependentUpon>
-	  </Compile>
-	</ItemGroup>
-
-	<ItemGroup>
-	  <EmbeddedResource Update="Resources\LightIcons.resx">
-	    <Generator>ResXFileCodeGenerator</Generator>
-	    <LastGenOutput>LightIcons.Designer.cs</LastGenOutput>
-	  </EmbeddedResource>
-	  <EmbeddedResource Update="Resources\DarkIcons.resx">
-	    <Generator>ResXFileCodeGenerator</Generator>
-	    <LastGenOutput>DarkIcons.Designer.cs</LastGenOutput>
-	  </EmbeddedResource>
-	</ItemGroup>
+	<!-- Analysis and Code Quality -->
+	<PropertyGroup>
+		<AnalysisLevel>latest</AnalysisLevel>
+		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
 
 </Project>

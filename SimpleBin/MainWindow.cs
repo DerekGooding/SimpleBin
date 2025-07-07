@@ -6,11 +6,7 @@ namespace SimpleBin;
 
 public partial class MainWindow : Form
 {
-    private readonly BinHelper _binHelper;
-    private readonly IconHelper _iconHelper;
-    private bool _isDarkTheme;
-
-    public MainWindow(BinHelper binHelper, IconHelper iconHelper)
+    public MainWindow()
     {
         var sysLang = CultureInfo.CurrentUICulture.Name;
         var appLang = "en-001";
@@ -22,43 +18,14 @@ public partial class MainWindow : Form
         Thread.CurrentThread.CurrentUICulture = culture;
 
         InitializeComponent();
-        _iconHelper = iconHelper;
-        _isDarkTheme = IsDarkThemeEnabled();
-        ThemeChanged += Form1_ThemeChanged;
         TrayMenu.RenderMode = ToolStripRenderMode.System;
 
-        if (StartupHelper.IsInStartup())
-        {
-            AddToStartupBtn.Enabled = false;
-            RemoveFromStartupBtn.Enabled = true;
-        }
-        else
-        {
-            AddToStartupBtn.Enabled = true;
-            RemoveFromStartupBtn.Enabled = false;
-        }
-
-        _binHelper = binHelper;
         UpdateControls();
-
-        _binHelper.Update += (s, e) =>
-        {
-            if (InvokeRequired && !IsDisposed)
-                BeginInvoke(UpdateControls);
-            else UpdateControls();
-        };
 
         Load += (s, e) => HideForm();
     }
 
-    private void Form1_ThemeChanged(bool isDarkTheme)
-    {
-        _iconHelper.SetTheme(isDarkTheme);
-        UpdateControls();
-    }
-
     private delegate void ThemeHandler(bool isDarkTheme);
-    private event ThemeHandler ThemeChanged;
 
     private void TrayIcon_MouseClick(object sender, MouseEventArgs e)
     {
@@ -97,10 +64,6 @@ public partial class MainWindow : Form
         SizeToolStripItem.Text = $"{SizeToolStripItem.Text?.Split()[0]} {ConvertSizeToString(biteSize)}";
         ElementsToolStripItem.Text = $"{ElementsToolStripItem.Text?.Split()[0]} {itemCount}";
         ClearToolStripItem.Enabled = !BinHelper.IsBinEmpty();
-
-        TrayIcon.Icon = itemCount == 0
-            ? _iconHelper.GetEmptyIcon()
-            : _iconHelper.GetIcon();
     }
 
     private void SettingsToolStripItem_Click(object sender, EventArgs e) => ShowForm();
@@ -121,23 +84,23 @@ public partial class MainWindow : Form
         Close();
     }
 
-    protected override void WndProc(ref Message m)
-    {
-        const int WM_SETTINGCHANGE = 0x001A;
-        if (m.Msg == WM_SETTINGCHANGE && m.LParam != IntPtr.Zero)
-        {
-            var currentTheme = IsDarkThemeEnabled();
+    //protected override void WndProc(ref Message m)
+    //{
+    //    const int WM_SETTINGCHANGE = 0x001A;
+    //    if (m.Msg == WM_SETTINGCHANGE && m.LParam != IntPtr.Zero)
+    //    {
+    //        var currentTheme = IsDarkThemeEnabled();
 
-            if (_isDarkTheme != currentTheme)
-            {
-                _isDarkTheme = currentTheme;
-                ThemeChanged?.Invoke(currentTheme);
+    //        if (_isDarkTheme != currentTheme)
+    //        {
+    //            _isDarkTheme = currentTheme;
+    //            ThemeChanged?.Invoke(currentTheme);
 
-                Refresh();
-            }
-        }
-        base.WndProc(ref m);
-    }
+    //            Refresh();
+    //        }
+    //    }
+    //    base.WndProc(ref m);
+    //}
 
     public static bool IsDarkThemeEnabled()
     {
