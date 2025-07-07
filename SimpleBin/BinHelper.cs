@@ -39,7 +39,7 @@ public class BinHelper : IDisposable
 {
     private readonly List<FileSystemWatcher> _watchers = [];
     public delegate void BinUpdateHandler(object sender, FileSystemEventArgs e);
-    public event EventHandler<FileSystemEventArgs> Update;
+    public event EventHandler<FileSystemEventArgs>? Update;
     private Timer? _debounceTimer;
     private readonly Lock _lock = new();
     private bool _isDisposed;

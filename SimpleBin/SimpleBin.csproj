@@ -21,6 +21,9 @@
 		<PackageProjectUrl>https://github.com/exalaolir/SimpleBin</PackageProjectUrl>
 		<Description>This is a small program that adds a system recycle bin shortcut to the tray.</Description>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AotAssemblies>true</AotAssemblies>
 	</PropertyGroup>
 
 	<ItemGroup>
