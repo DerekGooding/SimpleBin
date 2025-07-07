@@ -2,149 +2,144 @@
 using System.Security.Principal;
 using Timer = System.Threading.Timer;
 
-namespace SimpleBin
+namespace SimpleBin;
+
+static partial class NativeBinMethods
 {
-    static partial class NativeBinMethods
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct Shqueryrbinfo
     {
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct Shqueryrbinfo
-        {
-            public int cbSize;
-            public long i64Size;
-            public long i64NumItems;
-        }
-
-        [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
-        internal static partial int SHQueryRecycleBinW(
-             string? pszRootPath,
-             ref Shqueryrbinfo pShQueryRbInfo);
-
-        [Flags]
-        internal enum RecycleBinFlags : uint
-        {
-            None = 0,
-            SherbNoconfirmation = 0x00000001,
-            SherbNoprogressui = 0x00000002,
-            SherbNosound = 0x00000004
-        }
-
-        [LibraryImport("shell32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-        internal static partial int SHEmptyRecycleBinW(
-             IntPtr hwnd,
-             string? pszRootPath,
-             RecycleBinFlags dwFlags);
+        public int cbSize;
+        public long i64Size;
+        public long i64NumItems;
     }
 
-    public class BinHelper : IDisposable
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int SHQueryRecycleBinW(
+         string? pszRootPath,
+         ref Shqueryrbinfo pShQueryRbInfo);
+
+    [Flags]
+    internal enum RecycleBinFlags : uint
     {
-        private readonly List<FileSystemWatcher> _watchers = [];
-        public delegate void BinUpdateHandler(object sender, FileSystemEventArgs e);
-        public event BinUpdateHandler? Update;
-        private Timer? _debounceTimer;
-        private readonly Lock _lock = new();
-        private bool _isDisposed;
+        None = 0,
+        SherbNoconfirmation = 0x00000001,
+        SherbNoprogressui = 0x00000002,
+        SherbNosound = 0x00000004
+    }
 
-        public BinHelper()
+    [LibraryImport("shell32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int SHEmptyRecycleBinW(
+         IntPtr hwnd,
+         string? pszRootPath,
+         RecycleBinFlags dwFlags);
+}
+
+public class BinHelper : IDisposable
+{
+    private readonly List<FileSystemWatcher> _watchers = [];
+    public delegate void BinUpdateHandler(object sender, FileSystemEventArgs e);
+    public event EventHandler<FileSystemEventArgs> Update;
+    private Timer? _debounceTimer;
+    private readonly Lock _lock = new();
+    private bool _isDisposed;
+
+    public BinHelper()
+    {
+        var sid = (WindowsIdentity.GetCurrent().User?.Value)
+            ?? throw new InvalidOperationException("No such user");
+        var binPath = Path.Combine("$Recycle.Bin", sid);
+
+        var bins = DriveInfo.GetDrives().Where(d => d is
         {
-            string? sid = (WindowsIdentity.GetCurrent().User?.Value)
-                ?? throw new InvalidOperationException("No such user");
-            string binPath = Path.Combine("$Recycle.Bin", sid);
+            IsReady: true,
+            DriveType: DriveType.Fixed or DriveType.Network
+        }).Select(d => Path.Combine(d.RootDirectory.FullName, binPath));
 
-            var bins = DriveInfo.GetDrives().Where(d => d is
+        foreach (var bin in bins)
+        {
+            if (!Directory.Exists(bin)) continue;
+
+            var watcher = new FileSystemWatcher(bin)
             {
-                IsReady: true,
-                DriveType: DriveType.Fixed or DriveType.Network
-            }).Select(d => Path.Combine(d.RootDirectory.FullName, binPath));
+                IncludeSubdirectories = false,
+                EnableRaisingEvents = true,
+                InternalBufferSize = 65536,
+                Filter = "$I*",
+                NotifyFilter = NotifyFilters.FileName
+            };
 
-            foreach (var bin in bins)
-            {
-                if (!Directory.Exists(bin)) continue;
-
-                var watcher = new FileSystemWatcher(bin)
-                {
-                    IncludeSubdirectories = false,
-                    EnableRaisingEvents = true,
-                    InternalBufferSize = 65536,
-                    Filter = "$I*",
-                    NotifyFilter = NotifyFilters.FileName
-                };
-
-                watcher.Created += OnBinChanged;
-                watcher.Deleted += OnBinChanged;
-                _watchers.Add(watcher);
-            }
+            watcher.Created += OnBinChanged;
+            watcher.Deleted += OnBinChanged;
+            _watchers.Add(watcher);
         }
+    }
 
-        internal static (long biteSize, long itemCount) GetBinSize()
+    internal static (long biteSize, long itemCount) GetBinSize()
+    {
+        const string? pszRootPath = null; //need to watch size from all disks
+        var info = new NativeBinMethods.Shqueryrbinfo();
+        info.cbSize = Marshal.SizeOf(info);
+        const int okCode = 0;
+
+        var result = NativeBinMethods.SHQueryRecycleBinW(pszRootPath, ref info);
+
+        return result != okCode ? throw new Exception("SHQueryRecycleBinW failed") : ((long biteSize, long itemCount))(info.i64Size, info.i64NumItems);
+    }
+
+    internal static bool ClearBin()
+    {
+        const int okCode = 0;
+        var parentWindow = IntPtr.Zero;
+        const string? pszRootPath = null; //need to clear data from all disks
+
+        const NativeBinMethods.RecycleBinFlags flags = NativeBinMethods.RecycleBinFlags.SherbNoconfirmation |
+                                NativeBinMethods.RecycleBinFlags.SherbNosound;
+
+        var resultCode = NativeBinMethods.SHEmptyRecycleBinW(parentWindow, pszRootPath, flags);
+
+        return resultCode != okCode ? throw new Exception("SHEmptyRecycleBinW failed") : true;
+    }
+
+    private void OnBinChanged(object? sender, FileSystemEventArgs e)
+    {
+        lock (_lock)
         {
-            const string? pszRootPath = null; //need to watch size from all disks
-            var info = new NativeBinMethods.Shqueryrbinfo();
-            info.cbSize = Marshal.SizeOf(info);
-            const int okCode = 0;
-
-            var result = NativeBinMethods.SHQueryRecycleBinW(pszRootPath, ref info);
-
-            if (result != okCode) throw new Exception("SHQueryRecycleBinW failed");
-
-            return (info.i64Size, info.i64NumItems);
+            _debounceTimer?.Dispose();
+            _debounceTimer = new(DebounceCallback, e, 500, Timeout.Infinite);
         }
+    }
 
-        internal static bool ClearBin()
+    private void DebounceCallback(object? state)
+    {
+        lock (_lock)
         {
-            const int okCode = 0;
-            var parentWindow = IntPtr.Zero;
-            const string? pszRootPath = null; //need to clear data from all disks
-
-            const NativeBinMethods.RecycleBinFlags flags = NativeBinMethods.RecycleBinFlags.SherbNoconfirmation |
-                                    NativeBinMethods.RecycleBinFlags.SherbNosound;
-
-            int resultCode = NativeBinMethods.SHEmptyRecycleBinW(parentWindow, pszRootPath, flags);
-
-            if (resultCode != okCode) throw new Exception("SHEmptyRecycleBinW failed");
-
-            return true;
+            Update?.Invoke(this, (FileSystemEventArgs)state!);
+            _debounceTimer!.Dispose();
+            _debounceTimer = null;
         }
+    }
 
-        private void OnBinChanged(object? sender, FileSystemEventArgs e)
+    public static bool IsBinEmpty() => GetBinSize().itemCount == 0;
+
+    public void Dispose()
+    {
+        if (!_isDisposed)
         {
             lock (_lock)
             {
                 _debounceTimer?.Dispose();
-                _debounceTimer = new(DebounceCallback, e, 500, Timeout.Infinite);
-            }
-        }
-
-        private void DebounceCallback(object? state)
-        {
-            lock (_lock)
-            {
-                Update?.Invoke(this, (FileSystemEventArgs)state!);
-                _debounceTimer!.Dispose();
                 _debounceTimer = null;
             }
-        }
 
-        public static bool IsBinEmpty() => GetBinSize().itemCount == 0;
-
-        public void Dispose()
-        {
-            if (!_isDisposed)
+            foreach (var watcher in _watchers)
             {
-                lock (_lock)
-                {
-                    _debounceTimer?.Dispose();
-                    _debounceTimer = null;
-                }
-
-                foreach (var watcher in _watchers)
-                {
-                    watcher.EnableRaisingEvents = false;
-                    watcher.Dispose();
-                }
-
-                _isDisposed = true;
-                GC.SuppressFinalize(this);
+                watcher.EnableRaisingEvents = false;
+                watcher.Dispose();
             }
+
+            _isDisposed = true;
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -1,61 +1,51 @@
 ﻿using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
-using System.Resources;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
 
-namespace SimpleBin
+namespace SimpleBin;
+
+public static class StartupHelper
 {
-    public static class StartupHelper
+    private const string _appName = "SimpleBin";
+    private const string _registryPath = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";
+
+    static StartupHelper()
     {
-        private const string _appName = "SimpleBin";
-        private const string _registryPath = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";
-
-        static StartupHelper()
+        //Use to change Registry key when .exe lockation is changed
+        if (IsInStartup())
         {
-            //Use to change Registry key when .exe lockation is changed
-            if (IsInStartup())
-            {
-                RemoveFromStartup();
-                AddToStartup();
-            }
+            RemoveFromStartup();
+            AddToStartup();
         }
+    }
 
-        public static void AddToStartup()
-        {
-            string appPath = Application.ExecutablePath;
+    public static void AddToStartup()
+    {
+        var appPath = Application.ExecutablePath;
 
-            using RegistryKey? rk = Registry.CurrentUser.OpenSubKey(
-                _registryPath, true);
+        using var rk = Registry.CurrentUser.OpenSubKey(
+            _registryPath, true);
 
-            rk?.SetValue(_appName, appPath);
+        rk?.SetValue(_appName, appPath);
 
-            rk?.Close();
-        }
+        rk?.Close();
+    }
 
-        public static bool IsInStartup()
-        {
-            using RegistryKey? rk = Registry.CurrentUser.OpenSubKey(
-               _registryPath, false);
+    public static bool IsInStartup()
+    {
+        using var rk = Registry.CurrentUser.OpenSubKey(
+           _registryPath, false);
 
-            string? value = rk?.GetValue(_appName) as string;
-            rk?.Close();
+        var value = rk?.GetValue(_appName) as string;
+        rk?.Close();
 
-            return !string.IsNullOrEmpty(value);
-        }
+        return !string.IsNullOrEmpty(value);
+    }
 
-        public static void RemoveFromStartup()
-        {
-            using RegistryKey? rk = Registry.CurrentUser.OpenSubKey(
-              _registryPath, true);
+    public static void RemoveFromStartup()
+    {
+        using var rk = Registry.CurrentUser.OpenSubKey(
+          _registryPath, true);
 
-            rk?.DeleteValue(_appName, false);
-            rk?.Close();
-        }
+        rk?.DeleteValue(_appName, false);
+        rk?.Close();
     }
 }
